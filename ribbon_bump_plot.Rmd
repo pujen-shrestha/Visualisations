@@ -29,16 +29,16 @@ flights <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/ti
 # Colors
 
 ```{r}
-# color_palette <- viridisLite::mako(8)
-# description_color <- 'grey40'
-# country_colors <- c(
-#   'United Kingdom' = color_palette[2],
-#   'Germany' = color_palette[3],
-#    'Spain' = color_palette[4],
-#    'France' = color_palette[5],
-#    'Italy' = color_palette[6], 
-#   'Türkiye' = color_palette[7]
-# )
+color_palette <- viridisLite::mako(8)
+description_color <- 'grey40'
+country_colors <- c(
+  'United Kingdom' = color_palette[2],
+  'Germany' = color_palette[3],
+   'Spain' = color_palette[4],
+   'France' = color_palette[5],
+   'Italy' = color_palette[6],
+  'Türkiye' = color_palette[7]
+)
 ```
 
 # Basic Bump plot
@@ -69,8 +69,12 @@ todays_top <- country_rank_by_year %>%
 ## Build bump plot
 
 ```{r}
+quartz()
 bump_chart_basic <- country_rank_by_year %>% 
   filter(state %in% todays_top) %>% 
+  #add
+  mutate(state = as.character(state)) %>% 
+  #end
   ggplot(aes(year, rank, color = state)) + 
   geom_point(shape = '|', stroke = 6) +
   geom_bump(size = 1) +

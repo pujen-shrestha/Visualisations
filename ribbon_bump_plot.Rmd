@@ -46,11 +46,11 @@ country_colors <- c(
 ## Compute data
 
 ```{r}
+# Get flights total in state by year
 country_flights_by_year <- flights %>% 
   select(year, state = state_name, flights = flt_tot_1) %>% 
   group_by(year, state) %>% 
   summarise(flights = sum(flights))
-
 
 country_rank_by_year <- country_flights_by_year %>% 
   group_by(year) %>% 
@@ -69,7 +69,6 @@ todays_top <- country_rank_by_year %>%
 ## Build bump plot
 
 ```{r}
-quartz()
 bump_chart_basic <- country_rank_by_year %>% 
   filter(state %in% todays_top) %>% 
   #add
@@ -82,16 +81,13 @@ bump_chart_basic <- country_rank_by_year %>%
     data = country_rank_by_year %>% filter(year == 2016, state %in% todays_top),
     aes(label = state),
     hjust = 1,
-    nudge_x = -0.1,
-    fontface = 'bold'
+    nudge_x = -0.1
   ) +
   geom_text(
     data = country_rank_by_year %>% filter(year == 2022, state %in% todays_top),
     aes(label = rank),
     hjust = 0,
-    nudge_x = 0.1,
-    size = 5,
-    fontface = 'bold'
+    nudge_x = 0.1
   ) +
   annotate(
     'text',
@@ -101,7 +97,6 @@ bump_chart_basic <- country_rank_by_year %>%
     hjust = c(0, 1),
     vjust = 1,
     size = 4,
-    fontface = 'bold',
     color = description_color
   ) +
   scale_y_reverse(position = 'right', breaks = seq(16, 2, -2)) +
@@ -114,14 +109,12 @@ bump_chart_basic <- country_rank_by_year %>%
     panel.grid.minor.x = element_blank(),
     plot.background = element_rect(fill = color_palette[8], color = NA),
     text = element_text(
-      color = description_color,
-      family = 'Merriweather'
+      color = description_color
     ),
     plot.subtitle = element_text(
       margin = margin(t = 3, b = 2, unit = 'mm')
     ),
     plot.title = element_text(
-      face = 'bold',
       size = 20
     )
   ) +
@@ -187,16 +180,11 @@ percentage_bars_plot <- percentages_countries_by_year %>%
     panel.grid.major.x = element_blank(),
     panel.grid.minor.x = element_blank(),
     plot.background = element_rect(fill = color_palette[8], color = NA),
-    text = element_text(
-      color = description_color,
-      family = 'Merriweather'
-    ),
     plot.subtitle = element_text(
       margin = margin(t = 3, unit = 'mm'),
       lineheight = 1.25
     ),
     plot.title = element_text(
-      face = 'bold',
       size = 20
     )
   ) +
@@ -282,23 +270,20 @@ combined_plot <- percentage_bars_plot +
     hjust = c(0, 1),
     vjust = 1,
     size = 4,
-    fontface = 'bold',
     color = description_color
   ) +
   geom_text(
     data = mean_percentages %>% filter(year == 2016),
     aes(x = year - bar_width, y = middle_percentage, label = state, col = state),
     hjust = 1,
-    nudge_x = -0.1,
-    fontface = 'bold'
+    nudge_x = -0.1
   ) +
   geom_text(
     data = mean_percentages %>% filter(year == 2022, state %in% todays_top),
     aes(x = year + bar_width, y = middle_percentage, label = rank, col = state),
     hjust = 0,
     nudge_x = 0.1,
-    size = 5,
-    fontface = 'bold'
+    size = 5
   ) +
   coord_cartesian(
     xlim = c(2014.5, 2022.25),
@@ -324,30 +309,36 @@ ribbon_bump_chart <- combined_plot
 # Combine both bumpcharts into one plot
 
 ```{r}
-bump_chart_basic /
-  plot_spacer() /
-  ribbon_bump_chart +
-  plot_layout(heights = c(0.45, 0.02, 0.49)) +
-  plot_annotation(
-    title = 'Basic bumps vs. ribbon bump charts',
-    caption = 'TidyTuesday 2022 - Week 28 | Data: Eurocontrol | Graphic: Albert Rapp, @rappa753',
-    theme = theme(
-      plot.title = element_text(
-        size = 32,
-        color = description_color,
-        family = 'Oleo Script',
-        face = 'bold'
-      ),
-      plot.caption = element_text(
-        size = 8,
-        color = description_color,
-        family = 'Oleo Script',
-        face = 'bold'
-      )
-    )
-  ) &
-  theme(
-     plot.background = element_rect(fill = color_palette[8], color = NA)
-  )
+# bump_chart_basic /
+#   plot_spacer() /
+#   ribbon_bump_chart +
+#   plot_layout(heights = c(0.45, 0.02, 0.49)) +
+#   plot_annotation(
+#     title = 'Basic bumps vs. ribbon bump charts',
+#     caption = 'TidyTuesday 2022 - Week 28 | Data: Eurocontrol | Graphic: Albert Rapp, @rappa753',
+#     theme = theme(
+#       plot.title = element_text(
+#         size = 32,
+#         color = description_color
+#         # ,
+#         # family = 'Oleo Script',
+#         # face = 'bold'
+#       ),
+#       plot.caption = element_text(
+#         size = 8,
+#         color = description_color
+#         # ,
+#         # family = 'Oleo Script',
+#         # face = 'bold'
+#       )
+#     )
+#   ) &
+#   theme(
+#      plot.background = element_rect(fill = color_palette[8], color = NA)
+#   )
+```
+
+```{r}
+ribbon_bump_chart
 ```
 

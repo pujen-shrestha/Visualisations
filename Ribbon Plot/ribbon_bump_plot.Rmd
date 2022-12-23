@@ -13,15 +13,28 @@ output: html_document
 library(tidyverse)
 library(ggbump)
 library(patchwork)
+library(data.table)
+
+# camcorder::gg_record(
+#   dir = here::here('2022_w28_euroflights/img'),
+#   width = 20,
+#   height = 20,
+#   units = 'cm',
+#   dpi = 600
+# )
 
 camcorder::gg_record(
-  dir = here::here('2022_w28_euroflights/img'),
+  dir = here::here('2022_w28_covid/img'),
   width = 20,
   height = 20,
   units = 'cm',
   dpi = 600
 )
-flights <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-07-12/flights.csv') %>% 
+
+# flights <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-07-12/flights.csv') %>% 
+#   janitor::clean_names()
+
+covid_cases <- fread("/Users/pujenshrestha/Documents/Visualisations/Ribbon Plot/owid-covid-data.csv") %>% 
   janitor::clean_names()
 
 ```

@@ -305,7 +305,6 @@ combined_plot$layers[[2]] <- rects
 ribbon_bump_chart <- combined_plot
 ```
 
-
 # Combine both bumpcharts into one plot
 
 ```{r}

@@ -14,6 +14,7 @@ library(tidyverse)
 library(ggbump)
 library(patchwork)
 library(data.table)
+library(lubridate)
 
 # camcorder::gg_record(
 #   dir = here::here('2022_w28_euroflights/img'),
@@ -25,7 +26,7 @@ library(data.table)
 
 camcorder::gg_record(
   dir = here::here('2022_w28_covid/img'),
-  width = 20,
+  width = 30,
   height = 20,
   units = 'cm',
   dpi = 600
@@ -46,12 +47,36 @@ color_palette <- viridisLite::mako(8)
 description_color <- 'grey40'
 country_colors <- c(
   'United Kingdom' = color_palette[2],
-  'Germany' = color_palette[3],
-   'Spain' = color_palette[4],
-   'France' = color_palette[5],
-   'Italy' = color_palette[6],
-  'Türkiye' = color_palette[7]
+  'United States' = color_palette[3],
+  'Nepal' = color_palette[4],
+  'China' = color_palette[5],
+  'India' = color_palette[6],
+  'Argentina' = color_palette[7],
+  'Egypt' = color_palette[8],
+  'Nigeria' = "#7600bc",
+  'Japan' = "#0B6623",
+  'Italy' = "#FEE12B"
 )
+
+# "United Kingdom"
+# "United States"
+# "Nepal"
+# "China"
+# "India"
+# "Argentina"
+# "Egypt"
+# "Nigeria"
+# "Japan"
+# "Italy"
+
+# country_colors <- c(
+#   'United Kingdom' = color_palette[2],
+#   'Germany' = color_palette[3],
+#    'Spain' = color_palette[4],
+#    'France' = color_palette[5],
+#    'Italy' = color_palette[6],
+#   'Türkiye' = color_palette[7]
+# )
 ```
 
 # Basic Bump plot
@@ -59,30 +84,142 @@ country_colors <- c(
 ## Compute data
 
 ```{r}
-# Get flights total in state by year
-country_flights_by_year <- flights %>% 
-  select(year, state = state_name, flights = flt_tot_1) %>% 
-  group_by(year, state) %>% 
-  summarise(flights = sum(flights))
+# Clean date data
+covid_cases <- covid_cases %>% 
+  mutate(year = year(date),
+         month = month(date),
+         quarter = case_when(month == 1 | month == 2 |
+                               month == 3 ~ 1,
+                             month == 4 | month == 5 |
+                               month == 6 ~ 2,
+                             month == 7 | month == 8 |
+                               month == 9 ~ 3,
+                             month == 10 | month == 11 |
+                               month == 12 ~ 4),
+         year_quarter = paste0(year, " Quarter ", quarter),
+         new_cases = if_else(is.na(new_cases), 0, new_cases))
+```
 
-country_rank_by_year <- country_flights_by_year %>% 
+
+```{r}
+# Get flights total in state by year
+# country_flights_by_year <- flights %>% 
+#   select(year, state = state_name, flights = flt_tot_1) %>% 
+#   group_by(year, state) %>% 
+#   summarise(flights = sum(flights))
+
+country_cases_by_year <- covid_cases %>% 
+  select(year, state = location, cases = new_cases) %>% 
+  group_by(year, state) %>% 
+  summarise(cases = sum(cases))
+
+# country_cases_by_year <- country_cases_by_year %>%
+#   filter(state != "World") %>%
+#   filter(state != "Asia") %>%
+#   filter(state != "Europe") %>%
+#   filter(state != "North America") %>%
+#   filter(state != "South America") %>%
+#   filter(state != "Africa") %>%
+#   filter(state != "High income") %>%
+#   filter(state != "Upper middle income") %>%
+#   filter(state != "Lower middle income") %>%
+#   filter(state != "European Union") %>%
+#   filter(state != "Lower middle income")
+
+# "World"
+# "Asia"
+# "Europe"
+# "North America"
+# "High income"
+# "Upper middle income"
+# "European Union"
+# "North America"
+# "South America"
+# "Lower middle income"
+# "Africa"
+
+country_cases_by_year <- country_cases_by_year %>%
+  filter(state == "United Kingdom" |
+           state == "United States" |
+           state == "Nepal" |
+           state == "China" |
+           state == "India" |
+           state == "Argentina" |
+           state == "Egypt" |
+           state == "Nigeria" |
+           state == "Japan" |
+           state == "Italy") %>% 
+  mutate(cases = if_else(is.na(cases), 0, cases))
+
+# Select countries for plot
+# "United Kingdom"
+# "United States"
+# "Nepal"
+# "China"
+# "India"
+# "Argentina"
+# "Egypt"
+# "Nigeria"
+# "Japan"
+# "Italy"
+
+```
+
+
+```{r}
+# country_rank_by_year <- country_flights_by_year %>% 
+#   group_by(year) %>% 
+#   mutate(
+#     rank = row_number(desc(flights))
+#   ) %>% 
+#   ungroup() %>% 
+#   arrange(rank, year) 
+
+country_rank_by_year_quarter <- country_cases_by_year %>% 
   group_by(year) %>% 
   mutate(
-    rank = row_number(desc(flights))
+    rank = row_number(desc(cases))
   ) %>% 
   ungroup() %>% 
   arrange(rank, year) 
 
-max_rank <- 6
-todays_top <- country_rank_by_year %>% 
-  filter(year == 2022, rank <= max_rank) %>% 
+
+max_rank <- 10
+todays_top <- country_rank_by_year_quarter %>% 
+  filter(rank <= max_rank) %>% 
   pull(state)
+```
+
+
+```{r}
+# # Get flights total in state by year
+# country_flights_by_year <- flights %>% 
+#   select(year, state = state_name, flights = flt_tot_1) %>% 
+#   group_by(year, state) %>% 
+#   summarise(flights = sum(flights))
+# 
+# country_rank_by_year <- country_flights_by_year %>% 
+#   group_by(year) %>% 
+#   mutate(
+#     rank = row_number(desc(flights))
+#   ) %>% 
+#   ungroup() %>% 
+#   arrange(rank, year) 
+# 
+# max_rank <- 6
+# todays_top <- country_rank_by_year %>% 
+#   filter(year == 2022, rank <= max_rank) %>% 
+#   pull(state)
 ```
 
 ## Build bump plot
 
 ```{r}
-bump_chart_basic <- country_rank_by_year %>% 
+
+#how many quarter in the date
+table(country_rank_by_year_quarter$year)
+
+bump_chart_basic <- country_rank_by_year_quarter %>% 
   filter(state %in% todays_top) %>% 
   #add
   mutate(state = as.character(state)) %>% 
@@ -91,36 +228,36 @@ bump_chart_basic <- country_rank_by_year %>%
   geom_point(shape = '|', stroke = 6) +
   geom_bump(size = 1) +
   geom_text(
-    data = country_rank_by_year %>% filter(year == 2016, state %in% todays_top),
+    data = country_rank_by_year_quarter %>% filter(year == "2020", state %in% todays_top),
     aes(label = state),
     hjust = 1,
     nudge_x = -0.1
   ) +
   geom_text(
-    data = country_rank_by_year %>% filter(year == 2022, state %in% todays_top),
+    data = country_rank_by_year_quarter %>% filter(year == "2022", state %in% todays_top),
     aes(label = rank),
     hjust = 0,
     nudge_x = 0.1
   ) +
-  annotate(
-    'text',
-    x = c(2016, 2022),
-    y = c(0.25, 0.25),
-    label = c(2016, 2022),
-    hjust = c(0, 1),
-    vjust = 1,
-    size = 4,
-    color = description_color
-  ) +
+  # annotate(
+  #   'text',
+  #   x = c(2016, 2022),
+  #   y = c(0.25, 0.25),
+  #   label = c(2016, 2022),
+  #   hjust = c(0, 1),
+  #   vjust = 1,
+  #   size = 4,
+  #   color = description_color
+  # ) +
   scale_y_reverse(position = 'right', breaks = seq(16, 2, -2)) +
   scale_color_manual(values = country_colors) +
-  coord_cartesian(xlim = c(2014, 2022.5), ylim = c(6.5, 0.25), expand = F) +
+  coord_cartesian(xlim = c(2019.5, 2022.5), ylim = c(10.5, 0.25), expand = F) +
   theme_void() +
   theme(
     legend.position = 'none',
     panel.grid.major.x = element_blank(),
     panel.grid.minor.x = element_blank(),
-    plot.background = element_rect(fill = color_palette[8], color = NA),
+    plot.background = element_rect(fill = "grey", color = NA),
     text = element_text(
       color = description_color
     ),
@@ -132,9 +269,66 @@ bump_chart_basic <- country_rank_by_year %>%
     )
   ) +
   labs(
-    title = 'European flight ranking',
-    subtitle = 'Rank by number of incoming and outgoing flights from 2016 to 2022'
+    title = 'COVID-19 cases across 10 countries',
+    subtitle = 'Cases from 2020 to 2022'
   )
+
+bump_chart_basic
+
+# 
+# bump_chart_basic <- country_rank_by_year %>% 
+#   filter(state %in% todays_top) %>% 
+#   #add
+#   mutate(state = as.character(state)) %>% 
+#   #end
+#   ggplot(aes(year, rank, color = state)) + 
+#   geom_point(shape = '|', stroke = 6) +
+#   geom_bump(size = 1) +
+#   geom_text(
+#     data = country_rank_by_year %>% filter(year == 2016, state %in% todays_top),
+#     aes(label = state),
+#     hjust = 1,
+#     nudge_x = -0.1
+ #   ) +
+#   geom_text(
+#     data = country_rank_by_year %>% filter(year == 2022, state %in% todays_top),
+#     aes(label = rank),
+#     hjust = 0,
+#     nudge_x = 0.1
+#   ) +
+#   annotate(
+#     'text',
+#     x = c(2016, 2022),
+#     y = c(0.25, 0.25),
+#     label = c(2016, 2022),
+#     hjust = c(0, 1),
+#     vjust = 1,
+#     size = 4,
+#     color = description_color
+#   ) +
+  # scale_y_reverse(position = 'right', breaks = seq(16, 2, -2)) +
+  # scale_color_manual(values = country_colors) +
+  # coord_cartesian(xlim = c(2014, 2022.5), ylim = c(6.5, 0.25), expand = F) +
+  # theme_void() +
+  # theme(
+  #   legend.position = 'none',
+  #   panel.grid.major.x = element_blank(),
+  #   panel.grid.minor.x = element_blank(),
+  #   plot.background = element_rect(fill = color_palette[8], color = NA),
+  #   text = element_text(
+  #     color = description_color
+  #   ),
+  #   plot.subtitle = element_text(
+  #     margin = margin(t = 3, b = 2, unit = 'mm')
+  #   ),
+  #   plot.title = element_text(
+  #     size = 20
+  #   )
+  # ) +
+  # labs(
+  #   title = 'European flight ranking',
+  #   subtitle = 'Rank by number of incoming and outgoing flights from 2016 to 2022'
+  # )
 ```
 
 # Ribbon bump plot
@@ -149,11 +343,11 @@ bar_width <- 0.1
 others_color <- 'grey70' # Necessary to not leave out contribution of other countries
 
 compute_percentage_bounds <- function(year) {
-  country_rank_by_year %>% 
+  country_rank_by_year_quarter %>% 
     filter(year == !!year) %>% 
-    arrange(desc(flights)) %>% 
+    arrange(desc(cases)) %>% 
     mutate(
-      percentage_flights = flights / sum(flights),
+      percentage_flights = cases / sum(cases),
       state = if_else(state %in% todays_top, state, 'Others')
     ) %>% 
     group_by(year, state) %>% 
@@ -169,7 +363,9 @@ compute_percentage_bounds <- function(year) {
     )
 }
 
-percentages_countries_by_year <- map_dfr(2016:2022, compute_percentage_bounds)
+year_quarter_vector <- unique(country_rank_by_year_quarter$year)
+
+percentages_countries_by_year <- map_dfr(year_quarter_vector, compute_percentage_bounds)
 ```
 
 ## Plot Bars
@@ -179,14 +375,14 @@ percentage_bars_plot <- percentages_countries_by_year %>%
   ggplot() +
   geom_rect(
     aes(
-      xmin = year - bar_width, 
+      xmin = year - bar_width,
       xmax = year + bar_width,
       ymin = percentage_flights_lower,
       ymax = percentage_flights_upper,
       fill = state
     ),
     col = 'white'
-  )+
+  ) +
   theme_void() +
   theme(
     legend.position = 'none',
@@ -204,8 +400,9 @@ percentage_bars_plot <- percentages_countries_by_year %>%
   labs(
     title = 'European flight ranking',
     subtitle = 'Rank by number of incoming and outgoing flights from 2016 to 2022.\nHeight of bars indicate percentage of total flights.'
-  ) +
-  scale_fill_manual(values = c(country_colors, 'Others' = others_color)) 
+  )
+# +
+#   scale_fill_manual(values = c(country_colors, 'Others' = others_color)) 
 
 percentage_bars_plot
 ```
@@ -277,16 +474,16 @@ combined_plot <- percentage_bars_plot +
   ) +
   annotate(
     'text',
-    x = c(2016 - bar_width, 2022 + bar_width),
+    x = c(2020 - bar_width, 2022 + bar_width),
     y = c(1.1, 1.1),
-    label = c(2016, 2022),
+    label = c(2020, 2022),
     hjust = c(0, 1),
     vjust = 1,
     size = 4,
     color = description_color
   ) +
   geom_text(
-    data = mean_percentages %>% filter(year == 2016),
+    data = mean_percentages %>% filter(year == 2020),
     aes(x = year - bar_width, y = middle_percentage, label = state, col = state),
     hjust = 1,
     nudge_x = -0.1
@@ -299,7 +496,7 @@ combined_plot <- percentage_bars_plot +
     size = 5
   ) +
   coord_cartesian(
-    xlim = c(2014.5, 2022.25),
+    xlim = c(2019.5, 2022.25),
     ylim = c(0, 1.1)
   ) +
   scale_color_manual(values = c(country_colors, "Others" = others_color)) 

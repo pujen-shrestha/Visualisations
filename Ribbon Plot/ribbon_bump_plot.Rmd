@@ -26,7 +26,7 @@ library(lubridate)
 
 camcorder::gg_record(
   dir = here::here('2022_w28_covid/img'),
-  width = 30,
+  width = 35,
   height = 20,
   units = 'cm',
   dpi = 600
@@ -89,14 +89,14 @@ covid_cases <- covid_cases %>%
   mutate(year = year(date),
          month = month(date),
          quarter = case_when(month == 1 | month == 2 |
-                               month == 3 ~ 1,
+                               month == 3 ~ 0,
                              month == 4 | month == 5 |
-                               month == 6 ~ 2,
+                               month == 6 ~ .25,
                              month == 7 | month == 8 |
-                               month == 9 ~ 3,
+                               month == 9 ~ .5,
                              month == 10 | month == 11 |
-                               month == 12 ~ 4),
-         year_quarter = paste0(year, " Quarter ", quarter),
+                               month == 12 ~ .75),
+         year = year + quarter,
          new_cases = if_else(is.na(new_cases), 0, new_cases))
 ```
 
@@ -234,24 +234,24 @@ bump_chart_basic <- country_rank_by_year_quarter %>%
     nudge_x = -0.1
   ) +
   geom_text(
-    data = country_rank_by_year_quarter %>% filter(year == "2022", state %in% todays_top),
+    data = country_rank_by_year_quarter %>% filter(year == "2022.75", state %in% todays_top),
     aes(label = rank),
     hjust = 0,
     nudge_x = 0.1
   ) +
-  # annotate(
-  #   'text',
-  #   x = c(2016, 2022),
-  #   y = c(0.25, 0.25),
-  #   label = c(2016, 2022),
-  #   hjust = c(0, 1),
-  #   vjust = 1,
-  #   size = 4,
-  #   color = description_color
-  # ) +
+  annotate(
+    'text',
+    x = c(2020, 2022.75),
+    y = c(0.25, 0.25),
+    label = c(2020, 2022),
+    hjust = c(0, 1),
+    vjust = 1,
+    size = 4,
+    color = description_color
+  ) +
   scale_y_reverse(position = 'right', breaks = seq(16, 2, -2)) +
   scale_color_manual(values = country_colors) +
-  coord_cartesian(xlim = c(2019.5, 2022.5), ylim = c(10.5, 0.25), expand = F) +
+  coord_cartesian(xlim = c(2019.5, 2023), ylim = c(10.5, 0.25), expand = F) +
   theme_void() +
   theme(
     legend.position = 'none',
@@ -275,60 +275,6 @@ bump_chart_basic <- country_rank_by_year_quarter %>%
 
 bump_chart_basic
 
-# 
-# bump_chart_basic <- country_rank_by_year %>% 
-#   filter(state %in% todays_top) %>% 
-#   #add
-#   mutate(state = as.character(state)) %>% 
-#   #end
-#   ggplot(aes(year, rank, color = state)) + 
-#   geom_point(shape = '|', stroke = 6) +
-#   geom_bump(size = 1) +
-#   geom_text(
-#     data = country_rank_by_year %>% filter(year == 2016, state %in% todays_top),
-#     aes(label = state),
-#     hjust = 1,
-#     nudge_x = -0.1
- #   ) +
-#   geom_text(
-#     data = country_rank_by_year %>% filter(year == 2022, state %in% todays_top),
-#     aes(label = rank),
-#     hjust = 0,
-#     nudge_x = 0.1
-#   ) +
-#   annotate(
-#     'text',
-#     x = c(2016, 2022),
-#     y = c(0.25, 0.25),
-#     label = c(2016, 2022),
-#     hjust = c(0, 1),
-#     vjust = 1,
-#     size = 4,
-#     color = description_color
-#   ) +
-  # scale_y_reverse(position = 'right', breaks = seq(16, 2, -2)) +
-  # scale_color_manual(values = country_colors) +
-  # coord_cartesian(xlim = c(2014, 2022.5), ylim = c(6.5, 0.25), expand = F) +
-  # theme_void() +
-  # theme(
-  #   legend.position = 'none',
-  #   panel.grid.major.x = element_blank(),
-  #   panel.grid.minor.x = element_blank(),
-  #   plot.background = element_rect(fill = color_palette[8], color = NA),
-  #   text = element_text(
-  #     color = description_color
-  #   ),
-  #   plot.subtitle = element_text(
-  #     margin = margin(t = 3, b = 2, unit = 'mm')
-  #   ),
-  #   plot.title = element_text(
-  #     size = 20
-  #   )
-  # ) +
-  # labs(
-  #   title = 'European flight ranking',
-  #   subtitle = 'Rank by number of incoming and outgoing flights from 2016 to 2022'
-  # )
 ```
 
 # Ribbon bump plot
@@ -344,7 +290,7 @@ others_color <- 'grey70' # Necessary to not leave out contribution of other coun
 
 compute_percentage_bounds <- function(year) {
   country_rank_by_year_quarter %>% 
-    filter(year == !!year) %>% 
+    filter(year == {{year}}) %>% 
     arrange(desc(cases)) %>% 
     mutate(
       percentage_flights = cases / sum(cases),
@@ -366,6 +312,8 @@ compute_percentage_bounds <- function(year) {
 year_quarter_vector <- unique(country_rank_by_year_quarter$year)
 
 percentages_countries_by_year <- map_dfr(year_quarter_vector, compute_percentage_bounds)
+
+compute_percentage_bounds(2020)
 ```
 
 ## Plot Bars
@@ -416,7 +364,7 @@ margin_between_ribbons <- 0.003
 compute_ribbons <- function(state) {
   
   state_data <- percentages_countries_by_year %>% 
-    filter(state == !!state)
+    filter(state == {{state}})
   
   lower_bounds <- state_data %>% 
     select(year, percentage_flights_lower) %>% 

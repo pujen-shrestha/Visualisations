@@ -11,23 +11,26 @@ This visualisation was based on some cool plots I saw on Twitter by Albert Rapp.
 
 # Set-up
 
-```{r}
+```{r warning=FALSE}
 library(tidyverse)
 library(ggbump)
 library(patchwork)
 library(data.table)
 library(lubridate)
 
-camcorder::gg_record(
-  dir = here::here('covid_ribbon_plots/img'),
-  width = 35,
-  height = 20,
-  units = 'cm',
-  dpi = 600
-)
+options(scipen=999)
+
+# camcorder::gg_record(
+#   dir = here::here('covid_ribbon_plots/img'),
+#   width = 20,
+#   height = 15,
+#   units = 'cm',
+#   dpi = 600
+# )
 ```
 
 # Read in data
+
 ```{r}
 covid_cases <- fread("/Users/pujenshrestha/Documents/Visualisations/Ribbon Plot/owid-covid-data.csv") %>% 
   janitor::clean_names()
@@ -35,29 +38,42 @@ covid_cases <- fread("/Users/pujenshrestha/Documents/Visualisations/Ribbon Plot/
 ```
 
 # Set colour palette
-```{r}
-color_palette <- viridisLite::mako(8)
 
-description_color <- 'grey40'
+```{r}
+color_palette <- viridisLite::rocket(10)
+
+description_color <- color_palette[1]
+
+# country_colors <- c(
+#   'United Kingdom' = color_palette[2],
+#   'United States' = color_palette[3],
+#   'Nepal' = color_palette[4],
+#   'China' = color_palette[5],
+#   'India' = color_palette[6],
+#   'Argentina' = color_palette[7],
+#   'Egypt' = "red",
+#   'Nigeria' = "#7600bc",
+#   'Japan' = "#0B6623",
+#   'Italy' = "#FEE12B"
+# )
 
 country_colors <- c(
   'United Kingdom' = color_palette[2],
   'United States' = color_palette[3],
-  'Nepal' = color_palette[4],
-  'China' = color_palette[5],
-  'India' = color_palette[6],
-  'Argentina' = color_palette[7],
-  'Egypt' = color_palette[8],
-  'Nigeria' = "#7600bc",
-  'Japan' = "#0B6623",
-  'Italy' = "#FEE12B"
-)
+  'Canada' = color_palette[4],
+  'France' = color_palette[5],
+  'Italy' = color_palette[6],
+  'Germany' = color_palette[7],
+  'Japan' = color_palette[8]
+) 
 ```
 
 # Basic Bump plot
 
 ## Compute data
+
 ### Clean date data
+
 ```{r}
 covid_cases <- covid_cases %>% 
   mutate(year = year(date), # get year
@@ -70,32 +86,45 @@ covid_cases <- covid_cases %>%
                                month == 9 ~ .5,
                              month == 10 | month == 11 |
                                month == 12 ~ .75),
-         year = year + quarter, # sum year and quarter (easier to plot this way)
+         # year = year + quarter, # sum year and quarter (easier to plot this way)
          new_cases = if_else(is.na(new_cases), 0, new_cases)) # new cases
 ```
 
 ### Get total cases in country by year
+
 ```{r}
 country_cases_by_year <- covid_cases %>% 
   select(year, state = location, cases = new_cases) %>% 
   group_by(year, state) %>% 
   summarise(cases = sum(cases))
 
+# country_cases_by_year <- country_cases_by_year %>%
+#   filter(state == "United Kingdom" |
+#            state == "United States" |
+#            state == "Nepal" |
+#            state == "China" |
+#            state == "India" |
+#            state == "Argentina" |
+#            state == "Egypt" |
+#            state == "Nigeria" |
+#            state == "Japan" |
+#            state == "Italy") %>% 
+#   mutate(cases = if_else(is.na(cases), 0, cases))
+
 country_cases_by_year <- country_cases_by_year %>%
   filter(state == "United Kingdom" |
            state == "United States" |
-           state == "Nepal" |
-           state == "China" |
-           state == "India" |
-           state == "Argentina" |
-           state == "Egypt" |
-           state == "Nigeria" |
-           state == "Japan" |
-           state == "Italy") %>% 
+           state == "Canada" |
+           state == "France" |
+           state == "Italy" |
+           state == "Germany" |
+           state == "Japan") %>% 
   mutate(cases = if_else(is.na(cases), 0, cases))
 
 ```
+
 ### Rank countries
+
 ```{r}
 country_rank_by_year_quarter <- country_cases_by_year %>% 
   group_by(year) %>% 
@@ -117,10 +146,11 @@ todays_top <- country_rank_by_year_quarter %>%
 ## Build bump plot
 
 ```{r}
-
-#how many quarter in the date
+# Double checking how many quarter in the date
 table(country_rank_by_year_quarter$year)
+```
 
+```{r}
 bump_chart_basic <- country_rank_by_year_quarter %>% 
   filter(state %in% todays_top) %>% 
   #add
@@ -143,7 +173,7 @@ bump_chart_basic <- country_rank_by_year_quarter %>%
   ) +
   annotate(
     'text',
-    x = c(2020, 2022.75),
+    x = c(2020, 2022),
     y = c(0.25, 0.25),
     label = c(2020, 2022),
     hjust = c(0, 1),
@@ -153,7 +183,7 @@ bump_chart_basic <- country_rank_by_year_quarter %>%
   ) +
   scale_y_reverse(position = 'right', breaks = seq(16, 2, -2)) +
   scale_color_manual(values = country_colors) +
-  coord_cartesian(xlim = c(2019.5, 2023), ylim = c(10.5, 0.25), expand = F) +
+  coord_cartesian(xlim = c(2019.5, 2022.5), ylim = c(10.5, 0.25), expand = F) +
   theme_void() +
   theme(
     legend.position = 'none',
@@ -176,14 +206,39 @@ bump_chart_basic <- country_rank_by_year_quarter %>%
   )
 
 bump_chart_basic
-
 ```
 
 # Ribbon bump plot
 
 ## Compute data for bars
 
-Here I have used a little bit of functional programming to compute the percentages for each year. This means that we have to compute lower and upper bounds for the bars (with `cumsum()`)
+"Here I have used a little bit of functional programming to compute the percentages for each year. This means that we have to compute lower and upper bounds for the bars (with `cumsum()`)"
+
+```{r}
+# country_rank_by_year_quarter <- country_rank_by_year_quarter %>% 
+#   mutate(cases = log(cases)) # Just to show that this type of plot can someone times need a transformation to be readable. This occurs when the differences in the y variable are so large that it because under readable because of scaling!
+
+g7_population <-  tibble(state = c("United States",
+                       "United Kingdom",
+                       "France",
+                       "Italy",
+                       "Germany",
+                       "Canada",
+                       "Japan"),
+                       population = c(331900000,
+                                      67330000,
+                                      67500000,
+                                      59070000,
+                                      81130000,
+                                      38250000,
+                                      125700000)
+                       )
+
+country_rank_by_year_quarter <- left_join(country_rank_by_year_quarter, g7_population) %>% 
+  mutate(cases = cases/population) %>% 
+  select(-population)
+
+```
 
 ```{r}
 bar_width <- 0.1
@@ -214,7 +269,6 @@ year_quarter_vector <- unique(country_rank_by_year_quarter$year)
 
 percentages_countries_by_year <- map_dfr(year_quarter_vector, compute_percentage_bounds)
 
-compute_percentage_bounds(2020)
 ```
 
 ## Plot Bars
@@ -237,23 +291,27 @@ percentage_bars_plot <- percentages_countries_by_year %>%
     legend.position = 'none',
     panel.grid.major.x = element_blank(),
     panel.grid.minor.x = element_blank(),
-    plot.background = element_rect(fill = color_palette[8], color = NA),
+    plot.background = element_rect(fill = color_palette[10], color = NA),
     plot.subtitle = element_text(
-      margin = margin(t = 3, unit = 'mm'),
-      lineheight = 1.25
+      # margin = margin(t = 3, unit = 'mm'),
+      # lineheight = 1.25,
+      hjust = 0.05,
+      vjust = 0.05
     ),
     plot.title = element_text(
-      size = 20
+      size = 16,
+      hjust = 0.05,
+      vjust = 0.05
     )
+    ) +
+    labs(
+    title = 'G-7 Countries ranked by COVID-19 cases from 2020 to 2022',
+    subtitle = 'Height of bars indicate percentage of total cases standarised by population size'
   ) +
-  labs(
-    title = 'European flight ranking',
-    subtitle = 'Rank by number of incoming and outgoing flights from 2016 to 2022.\nHeight of bars indicate percentage of total flights.'
-  )
-# +
-#   scale_fill_manual(values = c(country_colors, 'Others' = others_color)) 
+  scale_fill_manual(values = c(country_colors, 'Others' = others_color))
 
 percentage_bars_plot
+
 ```
 
 ## Compute Ribbons data
@@ -276,7 +334,7 @@ compute_ribbons <- function(state) {
       y_to = c(percentage_flights_lower[-1], percentage_flights_lower[7]) + margin_between_ribbons,
       sigmoid = pmap(list(x_from, x_to, y_from, y_to), sigmoid, n = n_points, smooth = 8)
     ) %>% 
-    filter(year < 2022) %>% 
+    #filter(year < 2022) %>% 
     unnest(sigmoid) %>% 
     select(x, lower = y)
   
@@ -289,7 +347,7 @@ compute_ribbons <- function(state) {
       y_to = c(percentage_flights_upper[-1], percentage_flights_upper[7]) - margin_between_ribbons,
       sigmoid = pmap(list(x_from, x_to, y_from, y_to), sigmoid, n = n_points)
     ) %>% 
-    filter(year < 2022) %>% 
+    #filter(year < 2022) %>% 
     unnest(sigmoid) %>% 
     select(x, upper = y)
   
@@ -302,7 +360,7 @@ ribbons_data <- map_dfr(todays_top, compute_ribbons)
 
 ## Compute mean percentage for labels of rank and country
 
-```{r}
+```{r, warning=FALSE}
 mean_percentages <- percentages_countries_by_year %>% 
   group_by(state, year) %>% 
   summarise(
@@ -314,7 +372,7 @@ mean_percentages <- percentages_countries_by_year %>%
 
 ## Add ribbons to previous plot
 
-```{r}
+```{r, warning=FALSE}
 combined_plot <- percentage_bars_plot +
   geom_ribbon(
     data = ribbons_data,
@@ -323,10 +381,10 @@ combined_plot <- percentage_bars_plot +
   ) +
   annotate(
     'text',
-    x = c(2020 - bar_width, 2022 + bar_width),
-    y = c(1.1, 1.1),
-    label = c(2020, 2022),
-    hjust = c(0, 1),
+    x = c(2020 - bar_width, 2021, 2022 + bar_width),
+    y = c(1.1, 1.1, 1.1),
+    label = c(2020, 2021, 2022),
+    hjust = c(0, .5, 1),
     vjust = 1,
     size = 4,
     color = description_color
@@ -335,22 +393,23 @@ combined_plot <- percentage_bars_plot +
     data = mean_percentages %>% filter(year == 2020),
     aes(x = year - bar_width, y = middle_percentage, label = state, col = state),
     hjust = 1,
-    nudge_x = -0.1
+    nudge_x = -0.1,
+    size = 4
   ) +
   geom_text(
     data = mean_percentages %>% filter(year == 2022, state %in% todays_top),
     aes(x = year + bar_width, y = middle_percentage, label = rank, col = state),
     hjust = 0,
     nudge_x = 0.1,
-    size = 5
+    size = 4
   ) +
   coord_cartesian(
-    xlim = c(2019.5, 2022.25),
+    xlim = c(2019.25, 2022.25),
     ylim = c(0, 1.1)
   ) +
   scale_color_manual(values = c(country_colors, "Others" = others_color)) 
 
-combined_plot
+print(combined_plot)
 ```
 
 ## Turn order of layers so that bars are always on top

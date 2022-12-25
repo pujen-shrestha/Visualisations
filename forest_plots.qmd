@@ -1,0 +1,44 @@
+---
+title: "Forest Plots"
+author: "Pujen Shrestha"
+format: html
+editor: source
+---
+
+## Annotated Forest Plots using ggplot2
+
+
+```{r}
+library(tidyverse)
+library(gt)
+```
+
+
+```{r}
+res_log <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res_log.csv")
+res <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res.csv")
+```
+
+
+```{r}
+res <- res_log %>% 
+      rename_with(~str_c("log.", .), estimate:conf.high) %>% 
+  select(-p.value) %>% 
+  full_join(res)
+```
+
+
+```{r}
+glimpse(res)
+```
+
+
+```{r}
+p <- 
+  res %>% 
+  ggplot(aes(y = fct_rev(model))) + 
+  theme_classic()
+p
+```
+
+

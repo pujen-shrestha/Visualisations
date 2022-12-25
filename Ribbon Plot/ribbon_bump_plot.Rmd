@@ -5,9 +5,11 @@ date: '2022-12-22'
 output: html_document
 ---
 
-# This visualisation was based on some cool plots I saw on Twitter by Albert Rapp find on Github: https://github.com/AlbertRapp/PublicTidyTuesday/blob/main/2022_w28_euroflights/2022_w28_euroflights.qmd
+# Ribbon Plot
 
-# Packages and Initial Data
+This visualisation was based on some cool plots I saw on Twitter by Albert Rapp. Which can be found on [Github here](https://github.com/AlbertRapp/PublicTidyTuesday/blob/main/2022_w28_euroflights/2022_w28_euroflights.qmd).
+
+# Set-up
 
 ```{r}
 library(tidyverse)
@@ -16,35 +18,28 @@ library(patchwork)
 library(data.table)
 library(lubridate)
 
-# camcorder::gg_record(
-#   dir = here::here('2022_w28_euroflights/img'),
-#   width = 20,
-#   height = 20,
-#   units = 'cm',
-#   dpi = 600
-# )
-
 camcorder::gg_record(
-  dir = here::here('2022_w28_covid/img'),
+  dir = here::here('covid_ribbon_plots/img'),
   width = 35,
   height = 20,
   units = 'cm',
   dpi = 600
 )
+```
 
-# flights <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-07-12/flights.csv') %>% 
-#   janitor::clean_names()
-
+# Read in data
+```{r}
 covid_cases <- fread("/Users/pujenshrestha/Documents/Visualisations/Ribbon Plot/owid-covid-data.csv") %>% 
   janitor::clean_names()
 
 ```
 
-# Colors
-
+# Set colour palette
 ```{r}
 color_palette <- viridisLite::mako(8)
+
 description_color <- 'grey40'
+
 country_colors <- c(
   'United Kingdom' = color_palette[2],
   'United States' = color_palette[3],
@@ -57,38 +52,17 @@ country_colors <- c(
   'Japan' = "#0B6623",
   'Italy' = "#FEE12B"
 )
-
-# "United Kingdom"
-# "United States"
-# "Nepal"
-# "China"
-# "India"
-# "Argentina"
-# "Egypt"
-# "Nigeria"
-# "Japan"
-# "Italy"
-
-# country_colors <- c(
-#   'United Kingdom' = color_palette[2],
-#   'Germany' = color_palette[3],
-#    'Spain' = color_palette[4],
-#    'France' = color_palette[5],
-#    'Italy' = color_palette[6],
-#   'Türkiye' = color_palette[7]
-# )
 ```
 
 # Basic Bump plot
 
 ## Compute data
-
+### Clean date data
 ```{r}
-# Clean date data
 covid_cases <- covid_cases %>% 
-  mutate(year = year(date),
-         month = month(date),
-         quarter = case_when(month == 1 | month == 2 |
+  mutate(year = year(date), # get year
+         month = month(date), # get month 
+         quarter = case_when(month == 1 | month == 2 | # Create quarter
                                month == 3 ~ 0,
                              month == 4 | month == 5 |
                                month == 6 ~ .25,
@@ -96,47 +70,16 @@ covid_cases <- covid_cases %>%
                                month == 9 ~ .5,
                              month == 10 | month == 11 |
                                month == 12 ~ .75),
-         year = year + quarter,
-         new_cases = if_else(is.na(new_cases), 0, new_cases))
+         year = year + quarter, # sum year and quarter (easier to plot this way)
+         new_cases = if_else(is.na(new_cases), 0, new_cases)) # new cases
 ```
 
-
+### Get total cases in country by year
 ```{r}
-# Get flights total in state by year
-# country_flights_by_year <- flights %>% 
-#   select(year, state = state_name, flights = flt_tot_1) %>% 
-#   group_by(year, state) %>% 
-#   summarise(flights = sum(flights))
-
 country_cases_by_year <- covid_cases %>% 
   select(year, state = location, cases = new_cases) %>% 
   group_by(year, state) %>% 
   summarise(cases = sum(cases))
-
-# country_cases_by_year <- country_cases_by_year %>%
-#   filter(state != "World") %>%
-#   filter(state != "Asia") %>%
-#   filter(state != "Europe") %>%
-#   filter(state != "North America") %>%
-#   filter(state != "South America") %>%
-#   filter(state != "Africa") %>%
-#   filter(state != "High income") %>%
-#   filter(state != "Upper middle income") %>%
-#   filter(state != "Lower middle income") %>%
-#   filter(state != "European Union") %>%
-#   filter(state != "Lower middle income")
-
-# "World"
-# "Asia"
-# "Europe"
-# "North America"
-# "High income"
-# "Upper middle income"
-# "European Union"
-# "North America"
-# "South America"
-# "Lower middle income"
-# "Africa"
 
 country_cases_by_year <- country_cases_by_year %>%
   filter(state == "United Kingdom" |
@@ -151,65 +94,24 @@ country_cases_by_year <- country_cases_by_year %>%
            state == "Italy") %>% 
   mutate(cases = if_else(is.na(cases), 0, cases))
 
-# Select countries for plot
-# "United Kingdom"
-# "United States"
-# "Nepal"
-# "China"
-# "India"
-# "Argentina"
-# "Egypt"
-# "Nigeria"
-# "Japan"
-# "Italy"
-
 ```
-
-
+### Rank countries
 ```{r}
-# country_rank_by_year <- country_flights_by_year %>% 
-#   group_by(year) %>% 
-#   mutate(
-#     rank = row_number(desc(flights))
-#   ) %>% 
-#   ungroup() %>% 
-#   arrange(rank, year) 
-
 country_rank_by_year_quarter <- country_cases_by_year %>% 
   group_by(year) %>% 
   mutate(
-    rank = row_number(desc(cases))
+    rank = row_number(desc(cases)) # sort then rank based in row_number
   ) %>% 
   ungroup() %>% 
   arrange(rank, year) 
 
 
-max_rank <- 10
+max_rank <- 10 # just keep the top 10 (we only have 10 countries in this example but if were to generalise this plot it might be important)
+
+# Get the highest ranked country per year/quarter block (used for labeling)
 todays_top <- country_rank_by_year_quarter %>% 
   filter(rank <= max_rank) %>% 
   pull(state)
-```
-
-
-```{r}
-# # Get flights total in state by year
-# country_flights_by_year <- flights %>% 
-#   select(year, state = state_name, flights = flt_tot_1) %>% 
-#   group_by(year, state) %>% 
-#   summarise(flights = sum(flights))
-# 
-# country_rank_by_year <- country_flights_by_year %>% 
-#   group_by(year) %>% 
-#   mutate(
-#     rank = row_number(desc(flights))
-#   ) %>% 
-#   ungroup() %>% 
-#   arrange(rank, year) 
-# 
-# max_rank <- 6
-# todays_top <- country_rank_by_year %>% 
-#   filter(year == 2022, rank <= max_rank) %>% 
-#   pull(state)
 ```
 
 ## Build bump plot
@@ -281,8 +183,7 @@ bump_chart_basic
 
 ## Compute data for bars
 
-Here I have used a little bit of functional programming to compute the percentages for each year.
-This means that we have to compute lower and upper bounds for the bars (with `cumsum()`)
+Here I have used a little bit of functional programming to compute the percentages for each year. This means that we have to compute lower and upper bounds for the bars (with `cumsum()`)
 
 ```{r}
 bar_width <- 0.1
@@ -498,4 +399,3 @@ ribbon_bump_chart <- combined_plot
 ```{r}
 ribbon_bump_chart
 ```
-

@@ -11,34 +11,183 @@ editor: source
 ```{r}
 library(tidyverse)
 library(gt)
+library(confintr) # for confidence intervals
+library(data.table)
+library(purrr)
 ```
 
 
 ```{r}
-res_log <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res_log.csv")
-res <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res.csv")
+# res_log <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res_log.csv")
+# res <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res.csv")
+```
+
+## Random data
+Generating random data that would look something like a BehSci RCT.
+```{r}
+# data <- tibble(group = sample(x = c(1, 2, 3, 4, 5), size = 1000, replace = TRUE),
+#        outcome = case_when(group == 1 ~ rnorm(1, mean = 5, sd = 1.4),
+#                            group == 2 ~ rnorm(1, mean = 6, sd = 1.3),
+#                            group == 3 ~ rnorm(1, mean = 7, sd = 1.2),
+#                            group == 4 ~ rnorm(1, mean = 8, sd = 1.1),
+#                            group == 5 ~ rnorm(1, mean = 9, sd = 1.0)))
+
+
+generate_data <- function(rep, rep_n, mean, sd) {
+  data_out <- tibble(group = rep(rep, rep_n),
+                 outcome = rnorm(rep_n, mean = mean, sd = sd)) 
+  return(data_out)
+}
+
+data_1 <- generate_data(1, 200, 6.5, 1.0)
+data_2 <- generate_data(2, 200, 7, 1.8)
+data_3 <- generate_data(3, 200, 6, 3.2)
+data_4 <- generate_data(4, 200, 7, 2.1)
+data_5 <- generate_data(5, 200, 8, 2.0)
+
+data_generated <- data_1 %>% 
+  rbind(data_2) %>% 
+  rbind(data_3) %>% 
+  rbind(data_4) %>% 
+  rbind(data_5) %>% 
+  mutate(group = as.character(group))
+
 ```
 
 
 ```{r}
-res <- res_log %>% 
-      rename_with(~str_c("log.", .), estimate:conf.high) %>% 
-  select(-p.value) %>% 
-  full_join(res)
+
+confi_inter <- function(group_id) {
+  dataplot <- data_generated %>% 
+    filter(group == group_id) %>%
+    pull(outcome) %>% 
+    ci_mean()
+  
+  dataplot <- c(dataplot$estimate, dataplot$interval)
+  
+  dataplot <- tibble(group_id = group_id,
+                     estimate = dataplot[1],
+                     lower = dataplot[2],
+                     higher = dataplot[3])
+  return(dataplot)
+}
+
+groups <- c(1, 2, 3, 4, 5)
+
+dataplot <- map_dfr(groups, confi_inter)
+
+reg_1 <- lm(outcome ~ group, data = data_generated)
+reg_1_summary <- summary(reg_1)
+reg_1_coefficients <- reg_1_summary$coefficients
+test <- c(0, reg_1_coefficients[2:5,4])
+
+dataplot$pvalues <- test
+```
+```{r}
+dataPlot_control <- dataplot[1,]
+
+dataPlot <- dataplot[2:5,]
+```
+
+
+
+```{r}
+glimpse(dataPlot)
 ```
 
 
 ```{r}
-glimpse(res)
-```
-
-
-```{r}
-p <- 
-  res %>% 
-  ggplot(aes(y = fct_rev(model))) + 
+p <- dataPlot %>% 
+  ggplot(aes(y = factor(group_id))) + 
   theme_classic()
 p
 ```
 
+
+```{r}
+p <- p +
+  geom_point(aes(x=estimate), shape=16, size=3) +
+  geom_linerange(aes(xmin=lower, xmax=higher)) 
+p
+```
+
+
+```{r}
+p <- p +
+  coord_cartesian(ylim=c(1,5), xlim=c(5, 8))
+p
+```
+```{r}
+control_mean <- dataPlot_control$estimate[[1]]
+
+p <- p +
+  geom_vline(xintercept = control_mean, linetype="dashed") +
+  labs(x= "Outcome", y = "Group")
+p
+```
+
+
+```{r}
+p <- p +
+  annotate("text", x = control_mean - 0.5, y = 5, label = "Below control mean") +
+  annotate("text", x = control_mean + 0.5, y = 5, label = "Above control mean")
+p
+```
+
+```{r}
+p_mid <- p + 
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y= element_blank(),
+        axis.text.y= element_blank(),
+        axis.title.y= element_blank())
+p_mid
+```
+
+
+```{r}
+# wrangle results into pre-plotting table form
+res_plot <- res |>
+  # round estimates and 95% CIs to 2 decimal places for journal specifications
+  mutate(across(
+    c(estimate, conf.low, conf.high),
+    ~ str_pad(
+      round(.x, 2),
+      width = 4,
+      pad = "0",
+      side = "right"
+    )
+  ),
+  # add an "-" between HR estimate confidence intervals
+  estimate_lab = paste0(estimate, " (", conf.low, "-", conf.high, ")")) |>
+  # round p-values to two decimal places, except in cases where p < .001
+  mutate(p.value = case_when(
+    p.value < .001 ~ "<0.001",
+    round(p.value, 2) == .05 ~ as.character(round(p.value,3)),
+    p.value < .01 ~ str_pad( # if less than .01, go one more decimal place
+      as.character(round(p.value, 3)),
+      width = 4,
+      pad = "0",
+      side = "right"
+    ),
+    TRUE ~ str_pad( # otherwise just round to 2 decimal places and pad string so that .2 reads as 0.20
+      as.character(round(p.value, 2)),
+      width = 4,
+      pad = "0",
+      side = "right"
+    )
+  )) |>
+  # add a row of data that are actually column names which will be shown on the plot in the next step
+  bind_rows(
+    data.frame(
+      model = "Model",
+      estimate_lab = "Hazard Ratio (95% CI)",
+      conf.low = "",
+      conf.high = "",
+      p.value = "p-value"
+    )
+  ) |>
+  mutate(model = fct_rev(fct_relevel(model, "Model")))
+
+glimpse(res_plot)
+```
 

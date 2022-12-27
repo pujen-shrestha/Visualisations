@@ -1,0 +1,77 @@
+---
+title: "Treatment effect visualisation"
+author: "Pujen Shrestha"
+date: '2022-12-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(broom)
+options(scipen = 999)
+```
+
+```{r}
+generate_data <- function(rep, rep_n, mean, sd) {
+  data_out <- tibble(arm = rep(rep, rep_n),
+                 outcome = rnorm(rep_n, mean = mean, sd = sd)) 
+  return(data_out)
+}
+
+data_1 <- generate_data("Control", 200, 7, 1.0)
+data_2 <- generate_data("Treatment 1", 200, 7, 1.8)
+data_3 <- generate_data("Treatment 2", 200, 8, 3.2)
+
+data_generated <- data_1 %>% 
+  rbind(data_2) %>% 
+  rbind(data_3) %>% 
+  mutate(arm = as.character(arm))
+```
+
+```{r}
+reg_1 <- lm(outcome ~ arm, data = data_generated)
+
+arms <- c("Treatment 1", "Treatment 2")
+
+tidyAndMCA <- function(regression, arms) {
+  regression_tidy <- tidy(regression)
+  
+  arms <- paste0("arm", arms)
+  
+  regression_tidy_adjusted <- regression_tidy %>% 
+    mutate(p.value.adjusted = if_else(term %in% arms, p.adjust(p.value, method = "bonferroni"), p.value))
+  
+  return(regression_tidy_adjusted)
+}
+
+reg_1_tidyAndMCA <- tidyAndMCA(reg_1, arms)
+
+```
+
+```{r}
+
+control_mean <- data_generated %>% 
+  filter(arm == "Control") %>%
+  summarise(mean = mean(outcome, na.rm = TRUE)) %>% 
+  pull(mean)
+
+arms <- paste0("arm", arms)
+
+dataPlot <- reg_1_tidyAndMCA %>% 
+  filter(term %in% arms)
+
+dataPlot <- dataPlot %>% 
+  add_row(term = "Control",
+          estimate = control_mean) %>% 
+  mutate(term = fct_rev(factor(term)))
+
+
+ggplot() +
+  geom_bar(data = dataPlot, aes(x = term, ))
+
+```
+

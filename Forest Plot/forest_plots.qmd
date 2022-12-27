@@ -17,23 +17,11 @@ library(data.table)
 library(purrr)
 ```
 
-```{r}
-# res_log <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res_log.csv")
-# res <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res.csv")
-```
-
 ## Random data
 
-Generating random data that would look something like a BehSci RCT.
+Generating random data that would look something like a BehSci RCT or the output of some regression. This is data is not meant to be looked into too hard! Thanks!
 
 ```{r}
-# data <- tibble(group = sample(x = c(1, 2, 3, 4, 5), size = 1000, replace = TRUE),
-#        outcome = case_when(group == 1 ~ rnorm(1, mean = 5, sd = 1.4),
-#                            group == 2 ~ rnorm(1, mean = 6, sd = 1.3),
-#                            group == 3 ~ rnorm(1, mean = 7, sd = 1.2),
-#                            group == 4 ~ rnorm(1, mean = 8, sd = 1.1),
-#                            group == 5 ~ rnorm(1, mean = 9, sd = 1.0)))
-
 
 generate_data <- function(rep, rep_n, mean, sd) {
   data_out <- tibble(group = rep(rep, rep_n),

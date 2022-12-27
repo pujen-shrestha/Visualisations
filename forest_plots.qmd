@@ -82,7 +82,9 @@ reg_1_coefficients <- reg_1_summary$coefficients
 test <- c(0, reg_1_coefficients[2:5,4])
 
 dataplot$pvalues <- test
+dataplot$group_id <- as.character(dataplot$group_id)
 ```
+
 ```{r}
 dataPlot_control <- dataplot[1,]
 
@@ -146,10 +148,10 @@ p_mid
 
 ```{r}
 # wrangle results into pre-plotting table form
-res_plot <- res |>
+dataPlot <- dataPlot %>% 
   # round estimates and 95% CIs to 2 decimal places for journal specifications
   mutate(across(
-    c(estimate, conf.low, conf.high),
+    c(estimate, lower, higher),
     ~ str_pad(
       round(.x, 2),
       width = 4,
@@ -158,36 +160,44 @@ res_plot <- res |>
     )
   ),
   # add an "-" between HR estimate confidence intervals
-  estimate_lab = paste0(estimate, " (", conf.low, "-", conf.high, ")")) |>
+  estimate_lab = paste0(estimate, " (", lower, "-", higher, ")")) %>% 
   # round p-values to two decimal places, except in cases where p < .001
-  mutate(p.value = case_when(
-    p.value < .001 ~ "<0.001",
-    round(p.value, 2) == .05 ~ as.character(round(p.value,3)),
-    p.value < .01 ~ str_pad( # if less than .01, go one more decimal place
-      as.character(round(p.value, 3)),
+  mutate(pvalues = case_when(
+    pvalues < .001 ~ "<0.001",
+    round(pvalues, 2) == .05 ~ as.character(round(pvalues,3)),
+    pvalues < .01 ~ str_pad( # if less than .01, go one more decimal place
+      as.character(round(pvalues, 3)),
       width = 4,
       pad = "0",
       side = "right"
     ),
     TRUE ~ str_pad( # otherwise just round to 2 decimal places and pad string so that .2 reads as 0.20
-      as.character(round(p.value, 2)),
+      as.character(round(pvalues, 2)),
       width = 4,
       pad = "0",
       side = "right"
     )
-  )) |>
+  )) %>% 
   # add a row of data that are actually column names which will be shown on the plot in the next step
   bind_rows(
     data.frame(
-      model = "Model",
-      estimate_lab = "Hazard Ratio (95% CI)",
-      conf.low = "",
-      conf.high = "",
-      p.value = "p-value"
+      group_id = "Model",
+      estimate_lab = "95% CI",
+      lower = "",
+      higher = "",
+      pvalue = "p-value"
     )
-  ) |>
-  mutate(model = fct_rev(fct_relevel(model, "Model")))
+  ) 
+# %>% 
+#   mutate(group_id = fct_rev(fct_relevel(group_id, "Model")))
 
-glimpse(res_plot)
+glimpse(dataPlot)
+```
+
+```{r}
+p_left <-
+  res_plot  |>
+  ggplot(aes(y = model))
+p_left
 ```
 

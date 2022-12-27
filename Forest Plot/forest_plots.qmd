@@ -3,10 +3,11 @@ title: "Forest Plots"
 author: "Pujen Shrestha"
 format: html
 editor: source
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ## Annotated Forest Plots using ggplot2
-
 
 ```{r}
 library(tidyverse)
@@ -16,14 +17,15 @@ library(data.table)
 library(purrr)
 ```
 
-
 ```{r}
 # res_log <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res_log.csv")
 # res <- read_csv("https://raw.githubusercontent.com/kathoffman/steroids-trial-emulation/main/output/res.csv")
 ```
 
 ## Random data
+
 Generating random data that would look something like a BehSci RCT.
+
 ```{r}
 # data <- tibble(group = sample(x = c(1, 2, 3, 4, 5), size = 1000, replace = TRUE),
 #        outcome = case_when(group == 1 ~ rnorm(1, mean = 5, sd = 1.4),
@@ -53,7 +55,6 @@ data_generated <- data_1 %>%
   mutate(group = as.character(group))
 
 ```
-
 
 ```{r}
 
@@ -91,12 +92,9 @@ dataPlot_control <- dataplot[1,]
 dataPlot <- dataplot[2:5,]
 ```
 
-
-
 ```{r}
 glimpse(dataPlot)
 ```
-
 
 ```{r}
 p <- dataPlot %>% 
@@ -105,7 +103,6 @@ p <- dataPlot %>%
 p
 ```
 
-
 ```{r}
 p <- p +
   geom_point(aes(x=estimate), shape=16, size=3) +
@@ -113,12 +110,12 @@ p <- p +
 p
 ```
 
-
 ```{r}
 p <- p +
-  coord_cartesian(ylim=c(1,5), xlim=c(5, 8))
+  coord_cartesian(ylim=c(1,5), xlim=c(4.5, 8.5))
 p
 ```
+
 ```{r}
 control_mean <- dataPlot_control$estimate[[1]]
 
@@ -128,11 +125,10 @@ p <- p +
 p
 ```
 
-
 ```{r}
 p <- p +
-  annotate("text", x = control_mean - 0.5, y = 5, label = "Below control mean") +
-  annotate("text", x = control_mean + 0.5, y = 5, label = "Above control mean")
+  annotate("text", x = control_mean - 1, y = 5, label = "Below control mean") +
+  annotate("text", x = control_mean + 1, y = 5, label = "Above control mean")
 p
 ```
 
@@ -144,7 +140,6 @@ p_mid <- p +
         axis.title.y= element_blank())
 p_mid
 ```
-
 
 ```{r}
 # wrangle results into pre-plotting table form
@@ -185,7 +180,7 @@ dataPlot <- dataPlot %>%
       estimate_lab = "95% CI",
       lower = "",
       higher = "",
-      pvalue = "p-value"
+      pvalues = "p-value"
     )
   ) 
 # %>% 
@@ -196,8 +191,60 @@ glimpse(dataPlot)
 
 ```{r}
 p_left <-
-  res_plot  |>
-  ggplot(aes(y = model))
+  dataPlot %>% 
+  ggplot(aes(y = group_id))
 p_left
 ```
 
+```{r}
+p_left <- 
+  p_left +
+  geom_text(aes(x = 0, label = group_id), hjust = 0, fontface = "bold")
+p_left
+```
+
+```{r}
+p_left <- p_left +
+  geom_text(
+    aes(x = 2, label = estimate_lab),
+    hjust = 0,
+    fontface = ifelse(dataPlot$estimate_lab == "95% CI", "bold", "plain")
+  )
+
+p_left
+```
+
+```{r}
+p_left <-
+  p_left +
+  theme_void() +
+  coord_cartesian(xlim = c(0, 9))
+
+p_left 
+```
+
+```{r}
+# right side of plot - pvalues
+p_right <-
+  dataPlot  %>% 
+  ggplot() +
+  geom_text(
+    aes(x = 0, y = group_id, label = pvalues),
+    hjust = 0,
+    fontface = ifelse(dataPlot$pvalues == "p-value", "bold", "plain")
+  ) +
+  theme_void() 
+
+p_right
+```
+
+```{r}
+library(patchwork)
+layout <- c(
+  area(t = 0, l = 0, b = 30, r = 4), # left plot, starts at the top of the page (0) and goes 30 units down and 3 units to the right
+  area(t = 1, l = 4, b = 30, r = 12), # middle plot starts a little lower (t=1) because there's no title. starts 1 unit right of the left plot (l=4, whereas left plot is r=3), goes to the bottom of the page (30 units), and 6 units further over from the left plot (r=9 whereas left plot is r=3)
+  area(t = 0, l = 11.5, b = 30, r = 14) # right most plot starts at top of page, begins where middle plot ends (l=9, and middle plot is r=9), goes to bottom of page (b=30), and extends two units wide (r=11)
+)
+# final plot arrangement
+p_left + p_mid + p_right + plot_layout(design = layout)
+```

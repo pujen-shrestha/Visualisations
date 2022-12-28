@@ -10,9 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+options(scipen = 999)
+
 library(tidyverse)
 library(broom)
-options(scipen = 999)
+
+source()
 ```
 
 ```{r}
@@ -65,13 +68,40 @@ dataPlot <- reg_1_tidyAndMCA %>%
   filter(term %in% arms)
 
 dataPlot <- dataPlot %>% 
-  add_row(term = "Control",
-          estimate = control_mean) %>% 
-  mutate(term = fct_rev(factor(term)))
+  mutate(estimate = estimate + control_mean,
+         lower = estimate - 1.96*std.error,
+         upper = estimate + 1.96*std.error)
 
+dataPlot <- dataPlot %>% 
+  add_row(term = "Control",
+          estimate = control_mean,
+          .before = 1)
+
+dataPlot <- dataPlot %>% 
+  mutate(bar_color = if_else(term == "Control", "Control", "Treatment"),
+         label = as.character(round(estimate, digits = 2),
+                              width = 4,
+                              pad = "0",
+                              side = "right"))
+
+bar_colors <- c("blue", "grey")
 
 ggplot() +
-  geom_bar(data = dataPlot, aes(x = term, ))
+  geom_col(data = dataPlot, aes(x = term,
+                                y = estimate,
+                                fill = bar_color)) +
+  scale_fill_manual(values = bar_colors) +
+  geom_errorbar(data = dataPlot,
+                aes(x= term, ymin=upper, ymax=lower), width=0.2, size=1, color="orange") +
+  geom_text(data = dataPlot, aes(x = term,
+                                y = (estimate*.9) - (if_else(is.na(std.error),0, std.error*1.96)),
+                                label = label), size = 8, fontface = 2, color = "white") +
+  theme(panel.background = element_blank(),
+        axis.line = element_line(colour = "black"),
+        legend.position="none",
+        axis.title.x = element_blank(),
+        text = element_text(size = 12)) +
+  coord_cartesian(ylim=c(0,8.5), xlim=c(1, 3))
 
 ```
 
